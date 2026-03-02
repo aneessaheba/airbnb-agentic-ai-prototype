@@ -41,7 +41,9 @@ A full-stack, cloud-native Airbnb-style rental platform with an AI-powered trave
 - **Property Management** — owners list, edit, and manage rental properties
 - **Booking System** — traveler search, booking, and reservation management with Kafka event streaming
 - **AI Concierge** — Gemini-powered trip planning with daily itineraries, weather integration, packing checklists, and restaurant recommendations
-- **Chat History** — persistent AI conversation storage per booking
+- **LangGraph Agent** — multi-node workflow graph (StateGraph) with MemorySaver for session-persistent agent orchestration; tool calls routed via conditional edges
+- **Streaming Chat** — SSE endpoint streams Gemini tokens token-by-token to the browser via LangGraph `astream_events`
+- **Chat History** — persistent AI conversation storage per booking (MySQL)
 - **Image Uploads** — property photos via AWS S3 with presigned URLs
 - **Favorites** — save and manage preferred properties
 - **User Authentication** — bcrypt-hashed passwords, MongoDB-backed sessions
@@ -54,7 +56,7 @@ A full-stack, cloud-native Airbnb-style rental platform with an AI-powered trave
 |---|---|
 | Frontend | React 19, Redux Toolkit, React Router v7, Bootstrap 5, nginx |
 | Backend | Node.js 18, Express 5, Kafka.js, AWS SDK v3 (S3), bcrypt, express-session |
-| AI Service | Python 3.11, FastAPI, LangChain, Google Gemini (gemini-2.5-flash), SQLAlchemy |
+| AI Service | Python 3.11, FastAPI, LangChain, **LangGraph**, Google Gemini (gemini-2.5-flash), SQLAlchemy |
 | Databases | MySQL 8.0, MongoDB 7.0, Redpanda/Kafka |
 | Infrastructure | Docker, Kubernetes 1.29, AWS EKS, AWS ECR, AWS EBS, AWS ALB, eksctl |
 
@@ -250,10 +252,33 @@ The `EXTERNAL-IP` column shows your AWS ALB hostname.
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/ai/concierge` | Generate a full trip plan |
-| POST | `/ai/chat` | Conversational chat endpoint |
+| POST | `/ai/concierge` | Generate a full structured trip plan (Gemini + Tavily) |
+| POST | `/ai/concierge/chat` | Conversational chat — full response (LangGraph agent) |
+| POST | `/ai/concierge/chat/stream` | **Streaming SSE** — streams tokens as `data: {"token": "..."}` |
+| POST | `/ai/chat` | Legacy chat endpoint (backwards compatible) |
 | GET | `/ai/history` | Get chat history by `booking_id` |
 | GET | `/ai/health` | Health check |
+
+### LangGraph Agent Architecture
+
+The chat agent is built on a LangGraph `StateGraph` with two nodes and memory:
+
+```
+AgentState { messages, context }
+        │
+   ┌────▼──────────┐   tool_calls present?   ┌──────────────┐
+   │  call_model   │ ──────── yes ──────────► │  call_tools  │
+   │  (Gemini LLM) │                          │  (weather,   │
+   └────┬──────────┘                          │   search...) │
+        │ no → END                            └──────┬───────┘
+        ▼                                            │ loop
+      reply                                    call_model
+```
+
+- **MemorySaver** checkpoints state per `thread_id` (booking ID), giving the agent persistent memory across conversation turns
+- **Conditional edge** (`_should_continue`) routes to `call_tools` when the LLM emits tool calls, enabling multi-step reasoning
+- **Streaming** uses `astream_events(version="v2")` to capture `on_chat_model_stream` events and deliver tokens via SSE
+- **Pre-fetch optimization** injects weather and dining data as `SystemMessage`s before graph execution to reduce tool call round-trips and lower latency
 
 ---
 
