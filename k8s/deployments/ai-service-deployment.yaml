@@ -25,31 +25,28 @@ spec:
         env:
         - name: PORT
           value: "8000"
-        - name: DB_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: mysql-config
-              key: MYSQL_HOST
-        - name: DB_USER
-          valueFrom:
-            configMapKeyRef:
-              name: mysql-config
-              key: MYSQL_USER
-        - name: DB_PASSWORD
+        - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
               name: app-secrets
               key: MYSQL_PASSWORD
-        - name: DB_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: mysql-config
-              key: MYSQL_DATABASE
-        - name: OPENAI_API_KEY
+        - name: DATABASE_URL
+          value: "mysql+mysqlconnector://airbnb_user:$(MYSQL_PASSWORD)@mysql-service:3306/airbnb_clone"
+        - name: GEMINI_API_KEY
           valueFrom:
             secretKeyRef:
               name: app-secrets
-              key: OPENAI_API_KEY
+              key: GEMINI_API_KEY
+        - name: TAVILY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: TAVILY_API_KEY
+        - name: OPENWEATHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: OPENWEATHER_API_KEY
         - name: KAFKA_BROKER
           valueFrom:
             configMapKeyRef:
