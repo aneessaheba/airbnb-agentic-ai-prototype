@@ -6,6 +6,7 @@ from datetime import date
 class BookingContext(BaseModel):
     booking_id: Optional[int] = None
     location: Optional[str] = None
+    address: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
     start_date: date
