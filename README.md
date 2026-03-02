@@ -10,7 +10,7 @@ A full-stack, cloud-native Airbnb-style rental platform with an AI-powered trave
                     ┌─────────────────────────────────────────┐
                     │           AWS EKS Cluster               │
                     │                                         │
-  Browser ──► ALB ──► Frontend (React/nginx, 2 replicas)     │
+  Browser ──► ALB ──► Frontend (React/nginx, 2 replicas)      │
                     │       │                                 │
                     │       ├──► Backend (Node.js/Express)    │
                     │       │        │                        │
